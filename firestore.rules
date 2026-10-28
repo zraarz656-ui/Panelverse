@@ -1,0 +1,474 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Hardened Global Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isVerifiedUser() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == 'yuniquearun@gmail.com'
+      );
+    }
+
+    // 3. Entity Validation Blueprints (Synchronized with firebase-blueprint.json)
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'username', 'role', 'bookmarks', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'username', 'role', 'bookmarks', 'createdAt', 'updatedAt']) &&
+        isValidId(data.uid) &&
+        data.uid == request.auth.uid &&
+        data.username is string && data.username.size() >= 2 && data.username.size() <= 60 &&
+        data.role is string && data.role.size() >= 5 && data.role.size() <= 10 &&
+        (data.role == 'reader' || data.role == 'admin') &&
+        data.bookmarks is list && data.bookmarks.size() <= 50 &&
+        (data.bookmarks.size() == 0 || (data.bookmarks[0] is string && data.bookmarks[0].size() >= 1 && data.bookmarks[0].size() <= 128)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidUserPrivateInfo(data) {
+      return data.keys().hasAll(['uid', 'email', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'createdAt', 'updatedAt']) &&
+        isValidId(data.uid) &&
+        data.uid == request.auth.uid &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 254 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidReadingProgress(data) {
+      return data.keys().hasAll([
+          'userId', 'seriesId', 'chapterId', 'chapterNumber',
+          'seriesTitle', 'seriesSlug', 'seriesType', 'coverImage',
+          'pageIndex', 'totalPages', 'scrollPercentage', 'isCompleted',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'userId', 'seriesId', 'chapterId', 'chapterNumber',
+          'seriesTitle', 'seriesSlug', 'seriesType', 'coverImage',
+          'pageIndex', 'totalPages', 'scrollPercentage', 'isCompleted',
+          'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.userId) &&
+        data.userId == request.auth.uid &&
+        isValidId(data.seriesId) &&
+        isValidId(data.chapterId) &&
+        data.chapterNumber is number && data.chapterNumber >= 0 && data.chapterNumber <= 100000 &&
+        data.seriesTitle is string && data.seriesTitle.size() >= 1 && data.seriesTitle.size() <= 160 &&
+        isValidId(data.seriesSlug) && data.seriesSlug.size() <= 160 &&
+        data.seriesType is string && data.seriesType.size() >= 5 && data.seriesType.size() <= 10 &&
+        (data.seriesType == 'webtoon' || data.seriesType == 'manga') &&
+        data.coverImage is string && data.coverImage.size() >= 1 && data.coverImage.size() <= 1024 &&
+        data.pageIndex is number && data.pageIndex >= 0 && data.pageIndex <= 10000 &&
+        data.totalPages is number && data.totalPages >= 1 && data.totalPages <= 10000 &&
+        data.scrollPercentage is number && data.scrollPercentage >= 0 && data.scrollPercentage <= 100 &&
+        data.isCompleted is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidComment(data) {
+      return data.keys().hasAll([
+          'chapterId', 'seriesId', 'authorId', 'username',
+          'content', 'spoiler', 'upvotes', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'chapterId', 'seriesId', 'authorId', 'username',
+          'content', 'spoiler', 'upvotes', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.chapterId) &&
+        isValidId(data.seriesId) &&
+        isValidId(data.authorId) &&
+        data.username is string && data.username.size() >= 2 && data.username.size() <= 60 &&
+        data.content is string && data.content.size() >= 1 && data.content.size() <= 1000 &&
+        data.spoiler is bool &&
+        data.upvotes is number && data.upvotes >= 0 && data.upvotes <= 1000000 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidSeriesRequest(data) {
+      return data.keys().hasAll([
+          'title', 'type', 'author', 'reason', 'requestedBy',
+          'authorId', 'votes', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'title', 'type', 'author', 'reason', 'requestedBy',
+          'authorId', 'votes', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+        data.type is string && data.type.size() >= 5 && data.type.size() <= 10 &&
+        (data.type == 'webtoon' || data.type == 'manga') &&
+        data.author is string && data.author.size() >= 1 && data.author.size() <= 120 &&
+        data.reason is string && data.reason.size() >= 3 && data.reason.size() <= 1000 &&
+        data.requestedBy is string && data.requestedBy.size() >= 2 && data.requestedBy.size() <= 60 &&
+        isValidId(data.authorId) &&
+        data.votes is number && data.votes >= 0 && data.votes <= 1000000 &&
+        data.status is string && data.status.size() >= 7 && data.status.size() <= 12 &&
+        (data.status == 'Pending' || data.status == 'In Review' || data.status == 'Acquired') &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidLibrarySeries(data) {
+      return data.keys().hasAll([
+          'id', 'slug', 'title', 'origin', 'type', 'author', 'artist',
+          'status', 'releaseDay', 'synopsis', 'coverImage', 'genres',
+          'rating', 'totalViews', 'chaptersCount', 'featured', 'isDeleted',
+          'malayalamTitle', 'malayalamSynopsis', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'slug', 'title', 'origin', 'type', 'author', 'artist',
+          'status', 'releaseDay', 'synopsis', 'coverImage', 'genres',
+          'rating', 'totalViews', 'chaptersCount', 'featured', 'isDeleted',
+          'malayalamTitle', 'malayalamSynopsis', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.slug) && data.slug.size() <= 160 &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+        data.origin is string && data.origin.size() >= 5 && data.origin.size() <= 10 &&
+        (data.origin == 'manhwa' || data.origin == 'manga' || data.origin == 'manhua') &&
+        data.type is string && data.type.size() >= 5 && data.type.size() <= 10 &&
+        (data.type == 'webtoon' || data.type == 'manga') &&
+        data.author is string && data.author.size() >= 1 && data.author.size() <= 120 &&
+        data.artist is string && data.artist.size() >= 1 && data.artist.size() <= 120 &&
+        data.status is string && data.status.size() >= 7 && data.status.size() <= 10 &&
+        (data.status == 'Ongoing' || data.status == 'Completed') &&
+        data.releaseDay is string && data.releaseDay.size() >= 3 && data.releaseDay.size() <= 20 &&
+        data.synopsis is string && data.synopsis.size() >= 1 && data.synopsis.size() <= 2000 &&
+        data.coverImage is string && data.coverImage.size() >= 1 && data.coverImage.size() <= 100000 &&
+        data.genres is list && data.genres.size() <= 12 &&
+        (data.genres.size() == 0 || (data.genres[0] is string && data.genres[0].size() >= 1 && data.genres[0].size() <= 40)) &&
+        data.rating is number && data.rating >= 0 && data.rating <= 5 &&
+        data.totalViews is number && data.totalViews >= 0 && data.totalViews <= 1000000000 &&
+        data.chaptersCount is number && data.chaptersCount >= 0 && data.chaptersCount <= 100000 &&
+        data.featured is bool &&
+        data.isDeleted is bool &&
+        data.malayalamTitle is string && data.malayalamTitle.size() <= 200 &&
+        data.malayalamSynopsis is string && data.malayalamSynopsis.size() <= 2000 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidLibraryChapter(data) {
+      return data.keys().hasAll([
+          'id', 'seriesId', 'chapterNumber', 'title', 'releaseDate',
+          'views', 'pageUrls', 'isDeleted', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'seriesId', 'chapterNumber', 'title', 'releaseDate',
+          'views', 'pageUrls', 'isDeleted', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.seriesId) &&
+        data.chapterNumber is number && data.chapterNumber >= 0 && data.chapterNumber <= 100000 &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+        data.releaseDate is string && data.releaseDate.size() >= 1 && data.releaseDate.size() <= 60 &&
+        data.views is number && data.views >= 0 && data.views <= 1000000000 &&
+        data.pageUrls is list && data.pageUrls.size() <= 60 &&
+        (data.pageUrls.size() == 0 || (data.pageUrls[0] is string && data.pageUrls[0].size() >= 1 && data.pageUrls[0].size() <= 100000)) &&
+        data.isDeleted is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidAdminRecord(data) {
+      return data.keys().hasAll(['uid', 'createdAt']) &&
+        data.keys().hasOnly(['uid', 'createdAt']) &&
+        isValidId(data.uid) &&
+        data.createdAt is timestamp;
+    }
+
+    // 4. Collection Rules
+
+    // Public User Profiles (No PII)
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isVerifiedUser() && existing().uid == request.auth.uid;
+
+      allow create: if isOwner(userId) &&
+        isValidId(userId) &&
+        isValidUserProfile(incoming()) &&
+        incoming().uid == userId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        (incoming().role == 'reader' || isAdmin());
+
+      allow update: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isValidUserProfile(incoming()) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() ||
+          (
+            isOwner(userId) &&
+            incoming().role == existing().role &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['username', 'bookmarks', 'updatedAt'])
+          )
+        );
+
+      allow delete: if isValidId(userId) && isAdmin();
+
+      // Isolated PII Split Subcollection
+      match /private/{docId} {
+        allow get: if isValidId(userId) && isValidId(docId) && (isOwner(userId) || isAdmin()) &&
+          get(/databases/$(database)/documents/users/$(userId)).data.uid == userId;
+        allow list: if isOwner(userId) && existing().uid == request.auth.uid;
+
+        allow create: if isOwner(userId) &&
+          isValidId(userId) &&
+          isValidId(docId) &&
+          isValidUserPrivateInfo(incoming()) &&
+          incoming().uid == userId &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          get(/databases/$(database)/documents/users/$(userId)).data.uid == request.auth.uid;
+
+        allow update: if isVerifiedUser() &&
+          isValidId(userId) &&
+          isValidId(docId) &&
+          isValidUserPrivateInfo(incoming()) &&
+          incoming().uid == existing().uid &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          get(/databases/$(database)/documents/users/$(userId)).data.uid == request.auth.uid && (
+            isAdmin() ||
+            (
+              isOwner(userId) &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['email', 'updatedAt'])
+            )
+          );
+
+        allow delete: if isValidId(userId) && isValidId(docId) && isAdmin();
+      }
+
+      // Reading Progress Subcollection (Master Gate checks parent /users/{userId})
+      match /progress/{seriesId} {
+        allow get: if isValidId(userId) && isValidId(seriesId) && (isOwner(userId) || isAdmin()) &&
+          get(/databases/$(database)/documents/users/$(userId)).data.uid == userId;
+        allow list: if isOwner(userId) && existing().userId == request.auth.uid;
+
+        allow create: if isOwner(userId) &&
+          isValidId(userId) &&
+          isValidId(seriesId) &&
+          isValidReadingProgress(incoming()) &&
+          incoming().userId == userId &&
+          incoming().seriesId == seriesId &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          get(/databases/$(database)/documents/users/$(userId)).data.uid == request.auth.uid;
+
+        allow update: if isVerifiedUser() &&
+          isValidId(userId) &&
+          isValidId(seriesId) &&
+          isValidReadingProgress(incoming()) &&
+          incoming().userId == existing().userId &&
+          incoming().seriesId == existing().seriesId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          get(/databases/$(database)/documents/users/$(userId)).data.uid == request.auth.uid && (
+            isAdmin() ||
+            (
+              isOwner(userId) &&
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'chapterId', 'chapterNumber', 'seriesTitle', 'seriesSlug',
+                'seriesType', 'coverImage', 'pageIndex', 'totalPages',
+                'scrollPercentage', 'isCompleted', 'updatedAt'
+              ])
+            )
+          );
+
+        allow delete: if isValidId(userId) && isValidId(seriesId) && (isOwner(userId) || isAdmin()) &&
+          get(/databases/$(database)/documents/users/$(userId)).data.uid == userId;
+      }
+    }
+
+    // Episode & Chapter Comments
+    match /comments/{commentId} {
+      allow get: if isValidId(commentId) && existing().content.size() >= 1;
+      allow list: if existing().upvotes >= 0;
+
+      allow create: if isVerifiedUser() &&
+        isValidId(commentId) &&
+        isValidComment(incoming()) &&
+        incoming().authorId == request.auth.uid &&
+        incoming().upvotes == 0 &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/users/$(incoming().authorId));
+
+      allow update: if isVerifiedUser() &&
+        isValidId(commentId) &&
+        isValidComment(incoming()) &&
+        incoming().authorId == existing().authorId &&
+        incoming().chapterId == existing().chapterId &&
+        incoming().seriesId == existing().seriesId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() ||
+          // Action 1: Author edits content or spoiler flag
+          (
+            existing().authorId == request.auth.uid &&
+            incoming().upvotes == existing().upvotes &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['content', 'spoiler', 'updatedAt'])
+          ) ||
+          // Action 2: Verified reader increments upvote by 1
+          (
+            incoming().upvotes == existing().upvotes + 1 &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['upvotes', 'updatedAt'])
+          )
+        );
+
+      allow delete: if isValidId(commentId) && (
+        isAdmin() ||
+        (isVerifiedUser() && existing().authorId == request.auth.uid)
+      );
+    }
+
+    // Community Series Requests & Votes
+    match /requests/{requestId} {
+      allow get: if isValidId(requestId) && existing().title.size() >= 1;
+      allow list: if existing().votes >= 0;
+
+      allow create: if isVerifiedUser() &&
+        isValidId(requestId) &&
+        isValidSeriesRequest(incoming()) &&
+        incoming().authorId == request.auth.uid &&
+        incoming().votes == 1 &&
+        incoming().status == 'Pending' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/users/$(incoming().authorId));
+
+      allow update: if isVerifiedUser() &&
+        isValidId(requestId) &&
+        isValidSeriesRequest(incoming()) &&
+        incoming().authorId == existing().authorId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        // Terminal State Lock: once Acquired, only Admin can modify
+        (existing().status != 'Acquired' || isAdmin()) && (
+          isAdmin() ||
+          // Action 1: Creator updates reason before terminal state
+          (
+            existing().authorId == request.auth.uid &&
+            incoming().status == existing().status &&
+            incoming().votes == existing().votes &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['reason', 'updatedAt'])
+          ) ||
+          // Action 2: Verified reader increments vote by 1
+          (
+            incoming().status == existing().status &&
+            incoming().votes == existing().votes + 1 &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['votes', 'updatedAt'])
+          )
+        );
+
+      allow delete: if isValidId(requestId) && isAdmin();
+    }
+
+    // Persisted Series Catalog Overrides & Creations
+    match /series/{seriesId} {
+      allow get: if isValidId(seriesId) && existing().title.size() >= 1;
+      allow list: if existing().totalViews >= 0;
+
+      allow create: if isAdmin() &&
+        isValidId(seriesId) &&
+        isValidLibrarySeries(incoming()) &&
+        incoming().id == seriesId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isAdmin() &&
+        isValidId(seriesId) &&
+        isValidLibrarySeries(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() ||
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'slug', 'title', 'origin', 'type', 'author', 'artist',
+            'status', 'releaseDay', 'synopsis', 'coverImage', 'genres',
+            'rating', 'totalViews', 'chaptersCount', 'featured', 'isDeleted',
+            'malayalamTitle', 'malayalamSynopsis', 'updatedAt'
+          ])
+        );
+
+      allow delete: if isValidId(seriesId) && isAdmin();
+    }
+
+    // Persisted Chapter Metadata & Custom Panel Image URLs
+    match /chapters/{chapterId} {
+      allow get: if isValidId(chapterId) && existing().title.size() >= 1;
+      allow list: if existing().views >= 0;
+
+      allow create: if isAdmin() &&
+        isValidId(chapterId) &&
+        isValidLibraryChapter(incoming()) &&
+        incoming().id == chapterId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isAdmin() &&
+        isValidId(chapterId) &&
+        isValidLibraryChapter(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().seriesId == existing().seriesId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() ||
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'chapterNumber', 'title', 'releaseDate', 'views',
+            'pageUrls', 'isDeleted', 'updatedAt'
+          ])
+        );
+
+      allow delete: if isValidId(chapterId) && isAdmin();
+    }
+
+    // Trusted Admin Membership Lookup Collection
+    match /admins/{adminId} {
+      allow get: if isValidId(adminId) && (isOwner(adminId) || isAdmin());
+      allow list: if isAdmin() && existing().uid.size() >= 1;
+
+      allow create: if isAdmin() &&
+        isValidId(adminId) &&
+        isValidAdminRecord(incoming()) &&
+        incoming().uid == adminId &&
+        incoming().createdAt == request.time;
+
+      allow update: if false;
+      allow delete: if isValidId(adminId) && isAdmin();
+    }
+  }
+}

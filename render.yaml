@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: panelverse
+    runtime: node
+    plan: free
+    region: oregon
+    branch: main
+    autoDeploy: true
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 22.14.0
+      # sync:false makes Render prompt for the value instead of storing it in git.
+      - key: ADMIN_PIN
+        sync: false

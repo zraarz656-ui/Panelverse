@@ -1,0 +1,8 @@
+{
+  "name": "PanelVerse — Webtoon & Manga Reader",
+  "description": "Next-generation webtoon and manga reader featuring continuous scroll webtoon mode, paged RTL manga mode, community comments, requests, and release schedule.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

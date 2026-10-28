@@ -1,0 +1,600 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Public reader profile storing display username, role, and bookmarked series IDs without PII.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the user.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "username": {
+          "type": "string",
+          "description": "Public reader handle displayed on comments and requests.",
+          "minLength": 2,
+          "maxLength": 60
+        },
+        "role": {
+          "type": "string",
+          "description": "Reader role (reader or admin).",
+          "enum": ["reader", "admin"],
+          "minLength": 5,
+          "maxLength": 10
+        },
+        "bookmarks": {
+          "type": "array",
+          "description": "Bounded list of bookmarked series IDs (maximum 50 items).",
+          "maxLength": 50
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the profile was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the profile was last updated."
+        }
+      },
+      "required": ["uid", "username", "role", "bookmarks", "createdAt", "updatedAt"]
+    },
+    "UserPrivateInfo": {
+      "title": "UserPrivateInfo",
+      "description": "Isolated private user PII document containing verified email.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the user.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "User email address isolated from public profile.",
+          "minLength": 3,
+          "maxLength": 254
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the private record was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the private record was last updated."
+        }
+      },
+      "required": ["uid", "email", "createdAt", "updatedAt"]
+    },
+    "ReadingProgress": {
+      "title": "ReadingProgress",
+      "description": "Synchronized reading progress for a specific series under a user profile.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the reader.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "seriesId": {
+          "type": "string",
+          "description": "ID of the series being read.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "chapterId": {
+          "type": "string",
+          "description": "ID of the last read chapter.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "chapterNumber": {
+          "type": "number",
+          "description": "Episode or chapter number."
+        },
+        "seriesTitle": {
+          "type": "string",
+          "description": "Display title of the series.",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "seriesSlug": {
+          "type": "string",
+          "description": "URL slug of the series.",
+          "minLength": 1,
+          "maxLength": 160,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "seriesType": {
+          "type": "string",
+          "description": "Reader mode format (webtoon or manga).",
+          "enum": ["webtoon", "manga"],
+          "minLength": 5,
+          "maxLength": 10
+        },
+        "coverImage": {
+          "type": "string",
+          "description": "Cover image URL or reference.",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "pageIndex": {
+          "type": "number",
+          "description": "Current zero-based page index."
+        },
+        "totalPages": {
+          "type": "number",
+          "description": "Total pages in the chapter."
+        },
+        "scrollPercentage": {
+          "type": "number",
+          "description": "Reading completion percentage (0 to 100)."
+        },
+        "isCompleted": {
+          "type": "boolean",
+          "description": "Whether the chapter has been completed."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when progress tracking started."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when progress was last updated."
+        }
+      },
+      "required": [
+        "userId",
+        "seriesId",
+        "chapterId",
+        "chapterNumber",
+        "seriesTitle",
+        "seriesSlug",
+        "seriesType",
+        "coverImage",
+        "pageIndex",
+        "totalPages",
+        "scrollPercentage",
+        "isCompleted",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ChapterComment": {
+      "title": "ChapterComment",
+      "description": "Reader comment on a specific chapter or episode.",
+      "type": "object",
+      "properties": {
+        "chapterId": {
+          "type": "string",
+          "description": "Target chapter ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "seriesId": {
+          "type": "string",
+          "description": "Target series ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the comment author.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "username": {
+          "type": "string",
+          "description": "Display username of the comment author.",
+          "minLength": 2,
+          "maxLength": 60
+        },
+        "content": {
+          "type": "string",
+          "description": "Comment body text.",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "spoiler": {
+          "type": "boolean",
+          "description": "Whether the comment contains plot spoilers."
+        },
+        "upvotes": {
+          "type": "number",
+          "description": "Total upvote count."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the comment was posted."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the comment was last updated."
+        }
+      },
+      "required": [
+        "chapterId",
+        "seriesId",
+        "authorId",
+        "username",
+        "content",
+        "spoiler",
+        "upvotes",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SeriesRequest": {
+      "title": "SeriesRequest",
+      "description": "Community licensing request for a webtoon or manga series.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Requested series title.",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "type": {
+          "type": "string",
+          "description": "Requested series format (webtoon or manga).",
+          "enum": ["webtoon", "manga"],
+          "minLength": 5,
+          "maxLength": 10
+        },
+        "author": {
+          "type": "string",
+          "description": "Creator or studio name.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "reason": {
+          "type": "string",
+          "description": "Justification for licensing the series.",
+          "minLength": 3,
+          "maxLength": 1000
+        },
+        "requestedBy": {
+          "type": "string",
+          "description": "Username of the requester.",
+          "minLength": 2,
+          "maxLength": 60
+        },
+        "authorId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the requester.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "votes": {
+          "type": "number",
+          "description": "Community vote count."
+        },
+        "status": {
+          "type": "string",
+          "description": "Licensing workflow state (Pending, In Review, Acquired).",
+          "enum": ["Pending", "In Review", "Acquired"],
+          "minLength": 7,
+          "maxLength": 12
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the request was submitted."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the request was last updated."
+        }
+      },
+      "required": [
+        "title",
+        "type",
+        "author",
+        "reason",
+        "requestedBy",
+        "authorId",
+        "votes",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "LibrarySeries": {
+      "title": "LibrarySeries",
+      "description": "Persisted series catalog entry or override managed by administrators.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique series identifier.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "slug": {
+          "type": "string",
+          "description": "URL-friendly series slug.",
+          "minLength": 1,
+          "maxLength": 160,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "description": "Primary English display title.",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "origin": {
+          "type": "string",
+          "description": "Comic tradition origin (manhwa, manga, or manhua).",
+          "enum": ["manhwa", "manga", "manhua"],
+          "minLength": 5,
+          "maxLength": 10
+        },
+        "type": {
+          "type": "string",
+          "description": "Reading engine format (webtoon or manga).",
+          "enum": ["webtoon", "manga"],
+          "minLength": 5,
+          "maxLength": 10
+        },
+        "author": {
+          "type": "string",
+          "description": "Story author or writer.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "artist": {
+          "type": "string",
+          "description": "Illustrator or studio.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "status": {
+          "type": "string",
+          "description": "Serialization status (Ongoing or Completed).",
+          "enum": ["Ongoing", "Completed"],
+          "minLength": 7,
+          "maxLength": 10
+        },
+        "releaseDay": {
+          "type": "string",
+          "description": "Weekly release schedule day.",
+          "minLength": 3,
+          "maxLength": 20
+        },
+        "synopsis": {
+          "type": "string",
+          "description": "Series plot synopsis.",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "coverImage": {
+          "type": "string",
+          "description": "Cover artwork URL or data URI.",
+          "minLength": 1,
+          "maxLength": 100000
+        },
+        "genres": {
+          "type": "array",
+          "description": "Bounded list of genre tags (up to 12).",
+          "maxLength": 12
+        },
+        "rating": {
+          "type": "number",
+          "description": "Average reader rating (0 to 5)."
+        },
+        "totalViews": {
+          "type": "number",
+          "description": "Cumulative view count."
+        },
+        "chaptersCount": {
+          "type": "number",
+          "description": "Total published chapters count."
+        },
+        "featured": {
+          "type": "boolean",
+          "description": "Whether the series is highlighted in the home hero banner."
+        },
+        "isDeleted": {
+          "type": "boolean",
+          "description": "Tombstone flag when an administrator deletes a catalog series."
+        },
+        "malayalamTitle": {
+          "type": "string",
+          "description": "Optional localized Malayalam title.",
+          "minLength": 0,
+          "maxLength": 200
+        },
+        "malayalamSynopsis": {
+          "type": "string",
+          "description": "Optional localized Malayalam synopsis.",
+          "minLength": 0,
+          "maxLength": 2000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the series record was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the series record was last updated."
+        }
+      },
+      "required": [
+        "id",
+        "slug",
+        "title",
+        "origin",
+        "type",
+        "author",
+        "artist",
+        "status",
+        "releaseDay",
+        "synopsis",
+        "coverImage",
+        "genres",
+        "rating",
+        "totalViews",
+        "chaptersCount",
+        "featured",
+        "isDeleted",
+        "malayalamTitle",
+        "malayalamSynopsis",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "LibraryChapter": {
+      "title": "LibraryChapter",
+      "description": "Persisted chapter or episode with custom or generated panel image URLs.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique chapter identifier.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "seriesId": {
+          "type": "string",
+          "description": "Parent series identifier.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "chapterNumber": {
+          "type": "number",
+          "description": "Sequential chapter or episode number."
+        },
+        "title": {
+          "type": "string",
+          "description": "Episode or chapter title.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "releaseDate": {
+          "type": "string",
+          "description": "Formatted release date string.",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "views": {
+          "type": "number",
+          "description": "Chapter read count."
+        },
+        "pageUrls": {
+          "type": "array",
+          "description": "Bounded list of panel image URLs (up to 60 pages).",
+          "maxLength": 60
+        },
+        "isDeleted": {
+          "type": "boolean",
+          "description": "Tombstone flag when an administrator deletes a chapter."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the chapter record was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the chapter record was last updated."
+        }
+      },
+      "required": [
+        "id",
+        "seriesId",
+        "chapterNumber",
+        "title",
+        "releaseDate",
+        "views",
+        "pageUrls",
+        "isDeleted",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Trusted administrator membership document.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the administrator.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when admin access was granted."
+        }
+      },
+      "required": ["uid", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Public reader profile and bounded bookmarks list."
+    },
+    "/users/{userId}/private/{docId}": {
+      "schema": "UserPrivateInfo",
+      "description": "Isolated PII storage for the user's verified email."
+    },
+    "/users/{userId}/progress/{seriesId}": {
+      "schema": "ReadingProgress",
+      "description": "Per-series reading progress synchronized under the parent user profile."
+    },
+    "/comments/{commentId}": {
+      "schema": "ChapterComment",
+      "description": "Episode and chapter comments posted by verified readers."
+    },
+    "/requests/{requestId}": {
+      "schema": "SeriesRequest",
+      "description": "Community series licensing requests and vote tallies."
+    },
+    "/series/{seriesId}": {
+      "schema": "LibrarySeries",
+      "description": "Persisted series catalog metadata, cover images, and admin overrides."
+    },
+    "/chapters/{chapterId}": {
+      "schema": "LibraryChapter",
+      "description": "Persisted chapter metadata and panel image URLs."
+    },
+    "/admins/{adminId}": {
+      "schema": "AdminRecord",
+      "description": "Trusted administrator role lookup collection."
+    }
+  }
+}

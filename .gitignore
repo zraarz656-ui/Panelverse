@@ -1,0 +1,13 @@
+node_modules/
+.next/
+.next-dev/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+.openhands/
+.aistudio/
+public/assets/
+*.mp4
+
